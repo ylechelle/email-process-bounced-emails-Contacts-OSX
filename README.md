@@ -1,0 +1,2 @@
+# ics-process-bounced-emails-Contacts-OSX
+This AppleScript catches as many postmaster bouncing 5.1.1 type of emails, extracts the faulty email addresses, and if they are linked to a contact in Address Book, remove them from the email addresses. It then puts the contact into a "deprecated email group" or even a "Need Attention" if no valid email address exists any longer. Then it logs an counts what has been processed and tries to remove the Postmaster email. 
