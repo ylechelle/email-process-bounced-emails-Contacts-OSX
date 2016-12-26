@@ -27,9 +27,9 @@ set failedDates to {}
 
 --
 set {cCount, attnCount} to {0, 0}
-if failedAddresses ≠ {} then set {cCount, attnCount} to my cleanAddressBook(failedAddresses, failedDates)
+if failedAddresses ≠ {} then set {pCount, cCount, attnCount} to my cleanAddressBook(failedAddresses, failedDates)
 
-my logIt("Deprecated email addresses found: " & (count failedAddresses) & return & "Cleaned contacts: " & cCount & return & "Contacts added to Need Attention: " & attnCount, currentLog, "run")
+my logIt("Deprecated email addresses found: " & pCount & return & "Cleaned contacts: " & cCount & return & "Contacts added to Need Attention: " & attnCount, currentLog, "run")
 
 do shell script "open " & quoted form of currentLog
 --end perform mail action with messages
@@ -41,10 +41,10 @@ on cleanAddressBook(deprecatedAddresses)
 		property pAddresses : deprecatedAddresses
 	end script
 	
+	set processCount to 0
 	set cleanedCount to 0
 	set attentionCount to 0
 	set today to date string of (current date)
-	display dialog (today)
 	
 	-- Create groups in Address Book
 	tell application "Contacts"
@@ -61,59 +61,62 @@ on cleanAddressBook(deprecatedAddresses)
 			set aRow to (item i of p's pAddresses)
 			set anAddress to (item 1 of aRow)
 			
-			if exists (first person whose value of emails contains anAddress) then
-				try
-					set myContact to (first person whose value of emails contains anAddress)
-					
-					--only resend if client has another address
-					if (myContact's emails count) > 1 and doSendAgain then
-						set replaceAddress to (first email of myContact whose value ≠ anAddress)'s value
-						tell me to sendAgain(anAddress, replaceAddress)
-						delay 3
-					end if
-					
-					set contactName to myContact's name
-					set contactEmail to (first email of myContact whose value = anAddress)
-					set contactEmail's label to myLabel
-					
-					set emailCount to (count of myContact's emails)
-					if emailCount = 1 then
-						set groupX to (first group whose name = groupA)
-					else
-						set groupX to (first group whose name = groupB)
-					end if
-					
-					set removeContact to true
-					if removeContact then
-						delete contactEmail
-						if (myContact's id) is not in (people's id of groupX) then
-							add myContact to groupX
-							save
-						end if
-						if myContact's note = missing value then set myContact's note to ""
-						set myContact's note to "deprecated email address: " & anAddress & " bounced on: " & today & return & myContact's note
-						save
+			if "@" is in anAddress then
+				set processCount to processCount + 1
+
+				if exists (first person whose value of emails contains anAddress) then
+					try
+						set myContact to (first person whose value of emails contains anAddress)
 						
-						if emailCount = 1 then
-							set attentionCount to attentionCount + 1
-						else
-							set cleanedCount to cleanedCount + 1
+						--only resend if client has another address
+						if (myContact's emails count) > 1 and doSendAgain then
+							set replaceAddress to (first email of myContact whose value ≠ anAddress)'s value
+							tell me to sendAgain(anAddress, replaceAddress)
+							delay 3
 						end if
-					end if
-					
-				on error errMsg number errNum
-					if errNum = -128 then
-						error number -128
-					else
-						my logIt("cleanAddressBook Handler: " & errMsg & return & "Error number" & errNum, currentLog, "run")
-					end if
-				end try
-				
+						
+						set contactName to myContact's name
+						set contactEmail to (first email of myContact whose value = anAddress)
+						set contactEmail's label to myLabel
+						
+						set emailCount to (count of myContact's emails)
+						if emailCount = 1 then
+							set groupX to (first group whose name = groupA)
+						else
+							set groupX to (first group whose name = groupB)
+						end if
+						
+						set removeContact to true
+						if removeContact then
+							delete contactEmail
+							if (myContact's id) is not in (people's id of groupX) then
+								add myContact to groupX
+								save
+							end if
+							if myContact's note = missing value then set myContact's note to ""
+							set myContact's note to "deprecated email address: " & anAddress & " bounced on: " & today & return & myContact's note
+							save
+							
+							if emailCount = 1 then
+								set attentionCount to attentionCount + 1
+							else
+								set cleanedCount to cleanedCount + 1
+							end if
+						end if
+						
+					on error errMsg number errNum
+						if errNum = -128 then
+							error number -128
+						else
+							my logIt("cleanAddressBook Handler: " & errMsg & return & "Error number" & errNum, currentLog, "run")
+						end if
+					end try
+				end if
 			end if
 		end repeat
 	end tell
 	
-	return {cleanedCount, attentionCount}
+	return {processCount, cleanedCount, attentionCount}
 end cleanAddressBook
 -------------------------------------------------------------------------------------
 
